@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+  .msg-container {
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: #1e1e2e;
+    color: #cdd6f4;
+    cursor: pointer;
+    outline: none;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    position: relative;
+    border: 1px solid transparent;
+    transition: background 0.2s, box-shadow 0.3s, border 0.3s;
+  }
+  .msg-container.selected {
+    background: #313244;
+    box-shadow: 0 0 8px 2px rgba(137, 180, 250, 0.5);
+    border: 1px solid rgba(137, 180, 250, 0.6);
+  }
+  .msg-container.decrypted {
+    background: #1e3a2e;
+    box-shadow: 0 0 12px 3px rgba(166, 227, 161, 0.5);
+    border: 1px solid rgba(166, 227, 161, 0.6);
+  }
+  .msg-text {
+    word-break: break-all;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  .msg-text.plain {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    word-break: break-word;
+    color: #a6e3a1;
+  }
+  .timer-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: #a6e3a1;
+    border-radius: 0 0 8px 8px;
+    transition: width linear;
+  }
+  .hint {
+    font-size: 10px;
+    color: #6c7086;
+    position: absolute;
+    top: 4px;
+    right: 8px;
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+// Streamlit component communication
+function sendMessageToStreamlit(type, data) {
+  const outData = Object.assign({ isStreamlitMessage: true, type: type }, data);
+  window.parent.postMessage(outData, "*");
+}
+
+function init() {
+  sendMessageToStreamlit("streamlit:componentReady", { apiVersion: 1 });
+}
+
+function setFrameHeight(height) {
+  sendMessageToStreamlit("streamlit:setFrameHeight", { height: height });
+}
+
+function sendValue(value) {
+  sendMessageToStreamlit("streamlit:setComponentValue", { value: value });
+}
+
+let currentArgs = {};
+let isDecrypted = false;
+let isSelected = false;
+let decryptTimer = null;
+const DECRYPT_DURATION = 5000; // 5 seconds
+
+function onRender(event) {
+  if (!event.data || !event.data.args) return;
+  currentArgs = event.data.args;
+
+  const root = document.getElementById("root");
+  const { msg_id, ciphertext, plaintext, key_combo, sender } = currentArgs;
+  const bgColor = sender === "A" ? "#1a1a2e" : "#2e1a2e";
+
+  if (plaintext && !isDecrypted) {
+    // Server sent plaintext - show it with timer
+    isDecrypted = true;
+    root.innerHTML = `
+      <div class="msg-container decrypted" tabindex="0" id="msg-${msg_id}" style="background:${bgColor};">
+        <span class="msg-text plain">${escapeHtml(plaintext)}</span>
+        <div class="timer-bar" id="timer-${msg_id}" style="width:100%"></div>
+      </div>`;
+
+    // Animate timer bar
+    const timerBar = document.getElementById(`timer-${msg_id}`);
+    requestAnimationFrame(() => {
+      timerBar.style.transitionDuration = DECRYPT_DURATION + "ms";
+      timerBar.style.width = "0%";
+    });
+
+    // Re-encrypt after timeout
+    decryptTimer = setTimeout(() => {
+      isDecrypted = false;
+      sendValue({ action: "re_encrypt", msg_id: msg_id });
+    }, DECRYPT_DURATION);
+
+  } else if (!plaintext) {
+    // Show ciphertext (default state)
+    isDecrypted = false;
+    isSelected = false;
+    if (decryptTimer) { clearTimeout(decryptTimer); decryptTimer = null; }
+    root.innerHTML = `
+      <div class="msg-container" tabindex="0" id="msg-${msg_id}" style="background:${bgColor};">
+        <span class="msg-text">${escapeHtml(truncateCipher(ciphertext))}</span>
+      </div>`;
+
+    // Select on first click — also handle iframe getting focus
+    const el = document.getElementById(`msg-${msg_id}`);
+    window.addEventListener("focus", function() {
+      el.focus();
+    });
+    el.addEventListener("click", function() {
+      isSelected = true;
+      el.classList.add("selected");
+    });
+    el.addEventListener("focus", function() {
+      isSelected = true;
+      el.classList.add("selected");
+    });
+    el.addEventListener("blur", function() {
+      isSelected = false;
+      el.classList.remove("selected");
+    });
+  }
+
+  setFrameHeight(document.body.scrollHeight);
+}
+
+function truncateCipher(text) {
+  if (!text) return "";
+  if (text.length > 80) return text.substring(0, 40) + "..." + text.substring(text.length - 20);
+  return text;
+}
+
+function escapeHtml(text) {
+  if (!text) return "";
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Listen for key combos
+document.addEventListener("keydown", function(e) {
+  if (isDecrypted) return;
+  const combo = currentArgs.key_combo || {};
+  if (!combo.key) return;
+
+  const match =
+    (!!combo.ctrl === e.ctrlKey) &&
+    (!!combo.shift === e.shiftKey) &&
+    (!!combo.alt === e.altKey) &&
+    (e.key.toLowerCase() === combo.key.toLowerCase());
+
+  if (match) {
+    e.preventDefault();
+    sendValue({ action: "decrypt_requested", msg_id: currentArgs.msg_id });
+  }
+});
+
+// Handle blur - re-encrypt on focus loss
+document.addEventListener("focusout", function(e) {
+  if (isDecrypted && decryptTimer) {
+    clearTimeout(decryptTimer);
+    decryptTimer = null;
+    isDecrypted = false;
+    sendValue({ action: "re_encrypt", msg_id: currentArgs.msg_id });
+  }
+});
+
+window.addEventListener("message", onRender);
+init();
+</script>
+</body>
+</html>
