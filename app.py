@@ -1,6 +1,5 @@
 import json
 import streamlit as st
-import streamlit.components.v1 as st_components
 from datetime import datetime
 
 import db
@@ -149,7 +148,7 @@ with st.sidebar:
             st.rerun()
 
 # --- Main Chat Area (title as input that captures key combo) ---
-st_components.html(f"""
+st.html(f"""
 <style>
   .title-input {{
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
