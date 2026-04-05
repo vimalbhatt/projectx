@@ -38,6 +38,9 @@ st.markdown("""
     [data-testid="stAppDeployButton"] {
         display: none !important;
     }
+    [data-testid="stToolbar"] {
+        display: none !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
