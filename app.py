@@ -148,9 +148,9 @@ with st.sidebar:
             st.rerun()
 
 # --- Main Chat Area (title as input that captures key combo) ---
-st.html(f"""
+st.iframe(f"""
 <style>
-  html, body {{ margin: 0; padding: 0; height: 75px; overflow: hidden; }}
+  html, body {{ margin: 0; padding: 0; }}
   .title-input {{
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-size: 2rem;
@@ -223,7 +223,7 @@ st.html(f"""
 
 }})();
 </script>
-""")
+""", height=75)
 
 # Display messages in a scrollable container
 messages = db.get_messages()
@@ -290,7 +290,7 @@ with chat_container:
 
 # Send message input at bottom
 with st.form("send_msg", clear_on_submit=True):
-    col_input, col_send = st.columns([4, 1])
+    col_input, col_send = st.columns([6, 1], gap="small")
     with col_input:
         msg_text = st.text_input("Command", placeholder=f"Type a command to {other}...", key="msg_input", label_visibility="collapsed")
     with col_send:
@@ -325,7 +325,14 @@ st.markdown("""
     }
     [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
         min-width: 0 !important;
+    }
+    /* Send form: big input, small button */
+    [data-testid="stForm"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:first-child {
+        flex: 6 !important;
+    }
+    [data-testid="stForm"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child {
         flex: 1 !important;
+        max-width: 60px !important;
     }
 </style>
 """, unsafe_allow_html=True)
