@@ -41,7 +41,10 @@ st.markdown("""
     [data-testid="stToolbar"] {
         display: none !important;
     }
-    [data-testid="stBrandingContainer"] {
+    [data-testid="stBrandingContainer"],
+    [data-testid="appCreatorAvatar"],
+    a[class*="viewerBadge"],
+    a[href="https://streamlit.io/cloud"] {
         display: none !important;
     }
 </style>
