@@ -41,6 +41,9 @@ st.markdown("""
     [data-testid="stToolbar"] {
         display: none !important;
     }
+    [data-testid="stBrandingContainer"] {
+        display: none !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
