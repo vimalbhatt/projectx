@@ -56,6 +56,17 @@
     top: 4px;
     right: 8px;
   }
+  .hidden-input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+    border: none;
+    outline: none;
+    padding: 0;
+    margin: 0;
+    pointer-events: none;
+  }
 </style>
 </head>
 <body>
@@ -124,25 +135,31 @@ function onRender(event) {
     root.innerHTML = `
       <div class="msg-container" tabindex="0" id="msg-${msg_id}" style="background:${bgColor};">
         <span class="msg-text">${escapeHtml(truncateCipher(ciphertext))}</span>
+        <input class="hidden-input" id="kinput-${msg_id}" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="numeric" />
       </div>`;
 
-    // Select on first click — also handle iframe getting focus
     const el = document.getElementById(`msg-${msg_id}`);
-    window.addEventListener("focus", function() {
-      el.focus();
-    });
+    const kinput = document.getElementById(`kinput-${msg_id}`);
+
+    // Tap/click focuses the hidden input → brings up keyboard on mobile
     el.addEventListener("click", function() {
       isSelected = true;
       el.classList.add("selected");
+      kinput.value = "";
+      kinput.focus();
+    });
+    window.addEventListener("focus", function() {
+      el.focus();
     });
     el.addEventListener("focus", function() {
       isSelected = true;
       el.classList.add("selected");
     });
-    el.addEventListener("blur", function() {
+    kinput.addEventListener("blur", function() {
       isSelected = false;
       el.classList.remove("selected");
     });
+
   }
 
   setFrameHeight(document.body.scrollHeight);
@@ -161,21 +178,47 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-// Listen for key combos
+// Listen for key combos (supports both modifier+key and multi-char sequences)
+let keyBuffer = "";
+let keyBufferTimeout = null;
+
 document.addEventListener("keydown", function(e) {
   if (isDecrypted) return;
   const combo = currentArgs.key_combo || {};
   if (!combo.key) return;
 
-  const match =
-    (!!combo.ctrl === e.ctrlKey) &&
-    (!!combo.shift === e.shiftKey) &&
-    (!!combo.alt === e.altKey) &&
-    (e.key.toLowerCase() === combo.key.toLowerCase());
+  const hasModifiers = !!combo.ctrl || !!combo.shift || !!combo.alt;
+  const isSequence = !hasModifiers && combo.key.length > 1;
 
-  if (match) {
-    e.preventDefault();
-    sendValue({ action: "decrypt_requested", msg_id: currentArgs.msg_id });
+  if (isSequence) {
+    // Sequence mode: buffer typed keys and match against combo.key
+    if (e.key.length === 1) {
+      keyBuffer += e.key.toLowerCase();
+      // Keep buffer trimmed to sequence length
+      if (keyBuffer.length > combo.key.length) {
+        keyBuffer = keyBuffer.slice(-combo.key.length);
+      }
+      // Reset buffer after 3s of no typing
+      clearTimeout(keyBufferTimeout);
+      keyBufferTimeout = setTimeout(function() { keyBuffer = ""; }, 3000);
+
+      if (keyBuffer === combo.key.toLowerCase()) {
+        e.preventDefault();
+        keyBuffer = "";
+        sendValue({ action: "decrypt_requested", msg_id: currentArgs.msg_id });
+      }
+    }
+  } else {
+    // Single key + optional modifiers mode
+    const match =
+      (!!combo.ctrl === e.ctrlKey) &&
+      (!!combo.shift === e.shiftKey) &&
+      (!!combo.alt === e.altKey) &&
+      (e.key.toLowerCase() === combo.key.toLowerCase());
+    if (match) {
+      e.preventDefault();
+      sendValue({ action: "decrypt_requested", msg_id: currentArgs.msg_id });
+    }
   }
 });
 

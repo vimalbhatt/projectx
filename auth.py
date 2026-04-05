@@ -4,8 +4,8 @@ import crypto
 
 DEFAULT_PASSWORD = "changeme"
 DEFAULT_KEY_COMBOS = {
-    "A": {"ctrl": True, "shift": True, "key": "z"},
-    "B": {"ctrl": True, "shift": True, "key": "z"},
+    "A": {"ctrl": False, "shift": False, "alt": False, "key": "1234"},
+    "B": {"ctrl": False, "shift": False, "alt": False, "key": "1234"},
 }
 
 

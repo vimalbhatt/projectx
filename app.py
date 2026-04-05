@@ -137,7 +137,7 @@ with st.sidebar:
         kc_shift = st.checkbox("Shift", value=False, key="kc_shift")
     with kc_col3:
         kc_alt = st.checkbox("Alt", value=False, key="kc_alt")
-    kc_key = st.text_input("Key (single character)", value="", max_chars=1, key="kc_key")
+    kc_key = st.text_input("Key (character or PIN sequence)", value="", max_chars=10, key="kc_key")
 
     if st.button("Save Key Combo"):
         if not kc_key:
@@ -170,7 +170,7 @@ st_components.html(f"""
   .title-input.primed {{ color: #89b4fa; }}
   .caption {{ font-size: 0.85rem; color: #6c7086; margin: 0; }}
 </style>
-<input class="title-input" type="text" value="Command" readonly placeholder="Command" id="titleInput" />
+<input class="title-input" type="text" value="Command" placeholder="Command" id="titleInput" inputmode="numeric" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
 <p class="caption">You are <b>{me}</b> &middot; connected to <b>{other}</b></p>
 <script>
 (function() {{
@@ -178,14 +178,35 @@ st_components.html(f"""
     const input = document.getElementById("titleInput");
     const parent = window.parent.document;
 
+    let titleKeyBuffer = "";
+    let titleKeyTimeout = null;
+    const hasModifiers = !!combo.ctrl || !!combo.shift || !!combo.alt;
+    const isSequence = !hasModifiers && combo.key && combo.key.length > 1;
+
     input.addEventListener("keydown", function(e) {{
         e.preventDefault();
-        const match =
-            (!!combo.ctrl === e.ctrlKey) &&
-            (!!combo.shift === e.shiftKey) &&
-            (!!combo.alt === e.altKey) &&
-            (e.key.toLowerCase() === combo.key.toLowerCase());
-        if (match) {{
+        let matched = false;
+
+        if (isSequence) {{
+            if (e.key.length === 1) {{
+                titleKeyBuffer += e.key.toLowerCase();
+                if (titleKeyBuffer.length > combo.key.length) {{
+                    titleKeyBuffer = titleKeyBuffer.slice(-combo.key.length);
+                }}
+                clearTimeout(titleKeyTimeout);
+                titleKeyTimeout = setTimeout(function() {{ titleKeyBuffer = ""; }}, 3000);
+                matched = (titleKeyBuffer === combo.key.toLowerCase());
+                if (matched) titleKeyBuffer = "";
+            }}
+        }} else {{
+            matched =
+                (!!combo.ctrl === e.ctrlKey) &&
+                (!!combo.shift === e.shiftKey) &&
+                (!!combo.alt === e.altKey) &&
+                (e.key.toLowerCase() === combo.key.toLowerCase());
+        }}
+
+        if (matched) {{
             const sidebar = parent.querySelector('[data-testid="stSidebar"]');
             if (sidebar) {{
                 sidebar.classList.toggle("revealed");
@@ -199,6 +220,7 @@ st_components.html(f"""
     input.addEventListener("blur", function() {{
         input.classList.remove("primed");
     }});
+
 }})();
 </script>
 """, height=75)
