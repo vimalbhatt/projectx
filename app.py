@@ -150,6 +150,7 @@ with st.sidebar:
 # --- Main Chat Area (title as input that captures key combo) ---
 st.html(f"""
 <style>
+  html, body {{ margin: 0; padding: 0; height: 75px; overflow: hidden; }}
   .title-input {{
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-size: 2rem;
@@ -222,7 +223,7 @@ st.html(f"""
 
 }})();
 </script>
-""", height=75)
+""")
 
 # Display messages in a scrollable container
 messages = db.get_messages()
