@@ -304,8 +304,8 @@ with st.form("send_msg", clear_on_submit=True):
     elif sent:
         st.warning("Command cannot be empty.")
 
-# Action buttons
-col_clear, col_refresh = st.columns(2)
+# Action buttons in a single row
+col_clear, col_refresh = st.columns(2, gap="small")
 with col_clear:
     if st.button(":material/delete_outline:", use_container_width=True):
         db.clear_chat()
@@ -314,6 +314,21 @@ with col_clear:
 with col_refresh:
     if st.button(":material/refresh:", use_container_width=True):
         st.rerun()
+
+# Force columns to stay in one row on mobile
+st.markdown("""
+<style>
+    /* Prevent Streamlit columns from stacking on mobile */
+    [data-testid="stHorizontalBlock"] {
+        flex-wrap: nowrap !important;
+        gap: 0.5rem !important;
+    }
+    [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+        min-width: 0 !important;
+        flex: 1 !important;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # Auto-refresh using streamlit fragment
 @st.fragment(run_every=5)
