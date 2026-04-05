@@ -35,6 +35,9 @@ st.markdown("""
     .stTextInput button {
         display: none !important;
     }
+    [data-testid="stAppDeployButton"] {
+        display: none !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
