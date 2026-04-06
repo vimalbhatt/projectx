@@ -295,8 +295,9 @@ with chat_container:
                     except Exception:
                         st.error(f"Failed to decrypt command {msg_id}.")
                 elif action == "re_encrypt":
-                    st.session_state.decrypted_messages.pop(msg_id, None)
-                    st.rerun()
+                    if msg_id in st.session_state.decrypted_messages:
+                        st.session_state.decrypted_messages.pop(msg_id)
+                        st.rerun()
 
             st.markdown("<div style='margin-bottom:8px;'></div>", unsafe_allow_html=True)
 

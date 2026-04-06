@@ -222,14 +222,21 @@ document.addEventListener("keydown", function(e) {
   }
 });
 
-// Handle blur - re-encrypt on focus loss
+// Handle blur - re-encrypt when focus moves OUTSIDE this iframe
+// Use a short delay to distinguish internal focus shifts from true blur
 document.addEventListener("focusout", function(e) {
-  if (isDecrypted && decryptTimer) {
-    clearTimeout(decryptTimer);
-    decryptTimer = null;
-    isDecrypted = false;
-    sendValue({ action: "re_encrypt", msg_id: currentArgs.msg_id });
-  }
+  if (!isDecrypted || !decryptTimer) return;
+  // If focus is moving to another element inside this document, ignore
+  if (e.relatedTarget && document.contains(e.relatedTarget)) return;
+  // Delay to avoid racing with the send form on the parent page
+  setTimeout(function() {
+    if (isDecrypted && decryptTimer) {
+      clearTimeout(decryptTimer);
+      decryptTimer = null;
+      isDecrypted = false;
+      sendValue({ action: "re_encrypt", msg_id: currentArgs.msg_id });
+    }
+  }, 200);
 });
 
 window.addEventListener("message", onRender);
